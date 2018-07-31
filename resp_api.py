@@ -62,7 +62,7 @@ class UserSchema(object):
 class UserController(object):
     """Manages Users collection."""
 
-    schema = UserSchema
+    schema = UserSchema()
 
     def registration(self, data):
         """Create new user."""
@@ -72,7 +72,7 @@ class UserController(object):
         print 'Creating user'
         print(data)
 
-        return {'ok': 'True'}
+        return {'status': 'success'}
 
     def login(self, data):
         """User's authentication."""
@@ -82,7 +82,7 @@ class UserController(object):
         print 'Checking auth'
         print(data)
 
-        return {'ok': 'True'}
+        return {'status': 'success'}
 
 
 class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
