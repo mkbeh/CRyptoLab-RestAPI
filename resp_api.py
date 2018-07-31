@@ -37,8 +37,8 @@ class UserSchema(object):
 
     schema = {
         'email': (basestring, lambda x: x),
-        'password': (basestring, lambda x: 6 < x < 40),
-        'confirm_password': (basestring, lambda x: 6 < x < 40)
+        'password': (basestring, lambda x: 5 < len(x) < 40),
+        'confirm_password': (basestring, lambda x: 5 < len(x) < 40)
     }
 
     @classmethod
@@ -59,27 +59,6 @@ class UserSchema(object):
             cls.check_value(k, v)
 
 
-class UserLogin(JsonSerializable):
-    """The resource - user login"""
-
-    __slots__ = ('email', 'password')
-
-    def __init__(self, email, password):
-        self.email = email
-        self.password = password
-
-
-class UserRegistration(JsonSerializable):
-    """The resource - user registration"""
-
-    __slots__ = ('email', 'password', 'confirm_password')
-
-    def __init__(self, email, password, confirm_password):
-        self.email = email
-        self.password = password
-        self.confirm_password = confirm_password
-
-
 class UserController(object):
     """Manages Users collection."""
 
@@ -87,6 +66,7 @@ class UserController(object):
 
     def registration(self, data):
         """Create new user."""
+        self.schema.validate(data)
 
         # Need add user into db.
         print 'Creating user'
@@ -96,6 +76,7 @@ class UserController(object):
 
     def login(self, data):
         """User's authentication."""
+        self.schema.validate(data)
 
         # Request to db to check: user in db or not.
         print 'Checking auth'
