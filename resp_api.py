@@ -2,19 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import BaseHTTPServer
-import json
 import functools
+import json
 
 
 class HTTPError(Exception):
     def __init__(self, code, reason):
-        super(Exception, self).__init__(reason)
+        super(HTTPError, self).__init__(reason)
         self.code = code
 
 
 class JsonSerializable(object):
     """Implements method toDict to convert class to dict.
-    Inherited class should use __slots__"""
+
+    Inherited class should use __slots__
+    """
 
     def to_dict(self):
         return {
@@ -30,7 +32,36 @@ class JSONEncoder(json.JSONEncoder):
         return super(JSONEncoder, self).default(o)
 
 
-class User(JsonSerializable):
+class UserSchema(object):
+    """The class to validate correctness of input data for User methods"""
+
+    schema = {
+        'email': (basestring, lambda x: x),
+        'password': (basestring, lambda x: 6 < x < 40),
+        'confirm_password': (basestring, lambda x: 6 < x < 40)
+    }
+
+    @classmethod
+    def check_value(cls, name, value):
+        try:
+            traits = cls.schema[name]
+        except KeyError:
+            raise HTTPError(400, 'unknown value {}'.format(name))
+
+        if not isinstance(value, traits[0]):
+            raise HTTPError(400, '{} does has wrong type, expected {}'.format(name, traits[0]))
+        if not traits[1](value):
+            raise HTTPError(400, '{} does has wrong value'.format(name))
+
+    @classmethod
+    def validate(cls, d):
+        for k, v in d.items():
+            cls.check_value(k, v)
+
+
+class UserLogin(JsonSerializable):
+    """The resource - user login"""
+
     __slots__ = ('email', 'password')
 
     def __init__(self, email, password):
@@ -38,55 +69,64 @@ class User(JsonSerializable):
         self.password = password
 
 
-class UserController(object):
-    def __init__(self):
-        self.user = {}
+class UserRegistration(JsonSerializable):
+    """The resource - user registration"""
 
-    def create(self, data):
+    __slots__ = ('email', 'password', 'confirm_password')
+
+    def __init__(self, email, password, confirm_password):
+        self.email = email
+        self.password = password
+        self.confirm_password = confirm_password
+
+
+class UserController(object):
+    """Manages Users collection."""
+
+    schema = UserSchema
+
+    def registration(self, data):
         """Create new user."""
 
         # Need add user into db.
         print 'Creating user'
+        print(data)
 
         return {'ok': 'True'}
 
-    def check_auth(self, username):
+    def login(self, data):
         """User's authentication."""
 
         # Request to db to check: user in db or not.
         print 'Checking auth'
+        print(data)
 
         return {'ok': 'True'}
 
 
 class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    """The main http handler, routes requests by path and calls appropriate controller methods."""
+
     controller = UserController()
 
-    def do_GET(self):
-        if self.path.startswith('/user/'):
-            parts = self.path.split('/', 4)
-
-            if 3 == len(parts):
-                username = parts[2]
-
-                return self.process_request(200, functools.partial(self.controller.check_auth, username))
-
-            self.not_found()
-
     def do_POST(self):
-        if self.path == '/users/':
-            self.process_request(201, functools.partial(self.call_with_body, self.controller.create))
+        """Process POST requests."""
+        if self.path == '/user/login':
+            return self.process_request(201, functools.partial(self.call_with_body, self.controller.login))
+
+        elif self.path == '/user/registration':
+            return self.process_request(201, functools.partial(self.call_with_body, self.controller.registration))
 
         self.not_found()
 
     def get_data(self):
-        """Get request params from body."""
+        """Get request params from body"""
         if not self.headers['Content-Type'].startswith('application/json'):
             raise HTTPError(415, 'expected application/json')
 
         number_of_bits = int(self.headers['Content-Length'])
         body = self.rfile.read(number_of_bits)
-
         return json.loads(body, encoding='utf-8')
 
     def call_with_body(self, handler):
@@ -100,14 +140,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         return handler(data)
 
     def process_request(self, status, handler):
-        """Process requests and handle exceptions."""
+        """Process requests and handle exceptions"""
         try:
             data = handler()
-
         except HTTPError as e:
             data = {'error': str(e)}
             status = e.code
-
         except Exception as e:
             data = {'error': str(e)}
             status = 500
@@ -115,12 +153,12 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.write_response(status, data)
 
     def write_response(self, status, data):
-        """Formats response as json and writes."""
+        """Formats response as json and writes"""
         if data is not None:
             body = json.dumps(data, sort_keys=True, indent=4, cls=JSONEncoder).encode('utf-8')
             self.send_response(status)
             self.send_header('Content-Type', 'application/json; charset=utf=8')
-            self.send_header('Content-Length', len(body))
+            self.send_header('Content-Length',  len(body))
             self.end_headers()
             self.wfile.write(body)
             self.wfile.flush()
@@ -128,7 +166,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(204)
 
     def not_found(self):
-        self.write_response(404, {'error': 'Not found.'})
+        self.write_response(404, {'error': 'not found'})
 
 
 def main():
