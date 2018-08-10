@@ -203,7 +203,7 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 def main():
-    server_address = ('127.0.0.1', 8080)
+    server_address = ('142.93.160.206', 8080)
     server = BaseHTTPServer.HTTPServer(server_address, HTTPHandler)
     server.serve_forever()
 
