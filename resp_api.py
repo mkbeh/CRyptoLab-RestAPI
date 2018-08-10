@@ -4,6 +4,11 @@
 import BaseHTTPServer
 import functools
 import json
+import unicodedata
+
+import utils
+
+from pymongodb import pymongodb
 
 
 class HTTPError(Exception):
@@ -14,7 +19,6 @@ class HTTPError(Exception):
 
 class JsonSerializable(object):
     """Implements method toDict to convert class to dict.
-
     Inherited class should use __slots__
     """
 
@@ -38,7 +42,8 @@ class UserSchema(object):
     schema = {
         'email': (basestring, lambda x: x),
         'password': (basestring, lambda x: 5 < len(x) < 40),
-        'confirm_password': (basestring, lambda x: 5 < len(x) < 40)
+        'confirm_password': (basestring, lambda x: 5 < len(x) < 40),
+        'id': (basestring, lambda x: x)
     }
 
     @classmethod
@@ -63,26 +68,73 @@ class UserController(object):
     """Manages Users collection."""
 
     schema = UserSchema()
+    mongo = pymongodb.MongoDB()
+    json_encoder = pymongodb.JSONEncoder()
 
     def registration(self, data):
         """Create new user."""
         self.schema.validate(data)
 
-        # Need add user into db.
-        print 'Creating user'
-        print(data)
+        # Encode data.
+        email = unicodedata.normalize('NFKD', data['email']).encode('utf-8', 'ignore')
+        password = unicodedata.normalize('NFKD', data['password']).encode('utf-8', 'ignore')
+        confirm_password = unicodedata.normalize('NFKD', data['confirm_password']).encode('utf-8', 'ignore')
 
-        return {'status': 'success'}
+        # Validate data.
+        result = utils.validate_values(email, password, confirm_password)
+
+        if result is True:
+            # Check on current email is already registered.
+            document = self.mongo.find_one({'email': email}, 'users')
+
+            if document is None:
+                # Hashing password.
+                passwd_hash = utils.passwd_hashing(password)
+
+                # Try to get email from db.
+                document = self.mongo.insert_one({'email': email, 'password': passwd_hash}, 'users')
+
+                return {'id': self.json_encoder.encode(document.inserted_id)}
+
+            elif document is not None:
+                return {'status': {'error': 'User with current email is already registered.'}}
+
+        else:
+            # Return error.
+            return {'status': {'error': 'Incorrect data.'}}
 
     def login(self, data):
         """User's authentication."""
         self.schema.validate(data)
 
-        # Request to db to check: user in db or not.
-        print 'Checking auth'
-        print(data)
+        # Validate user's data.
+        result = utils.validate_values(data['email'], data['password'])
 
-        return {'status': 'success'}
+        # Check result.
+        if result is True:
+            # Try to get email from db.
+            if data['id'] == 'None':
+                document = self.mongo.find_one({'email': data['email']}, 'users')
+            else:
+                document = self.mongo.find_one_by_id(data['id'], 'users')
+
+            if document:
+                email_s = document['email'].encode()
+                password_s = document['password'].encode()
+                email_c = data['email'].encode()
+                password_c = data['password'].encode()
+
+                if email_s == email_c and utils.passwd_checker(password_s, password_c):
+                    return {'status': 'success'}
+
+                else:
+                    return {'status': {'error': 'Incorrect data.'}}
+
+            else:
+                return {'status': {'error': 'Incorrect data.'}}
+
+        else:
+            return {'status': {'error': 'Incorrect data.'}}
 
 
 class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
