@@ -5,6 +5,7 @@ import BaseHTTPServer
 import functools
 import json
 import unicodedata
+import ssl
 
 import utils
 
@@ -203,8 +204,11 @@ class HTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 def main():
-    server_address = ('142.93.160.206', 8080)
+    server_address = ('127.0.0.1', 4443)
+
     server = BaseHTTPServer.HTTPServer(server_address, HTTPHandler)
+    server.socket = ssl.wrap_socket(server.socket, keyfile=utils.get_path('cert', 'key.pem'),
+                                    certfile=utils.get_path('cert', 'cert.pem'), server_side=True)
     server.serve_forever()
 
 

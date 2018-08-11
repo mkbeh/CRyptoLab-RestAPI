@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import re
+import os
+import sys
 import bcrypt
 
 
@@ -32,7 +34,8 @@ def passwd_checker(hash_, password):
     return bcrypt.checkpw(password, hash_)
 
 
-def check_values_on_match(list_):
-    encoded_list = []
+def get_path(dir_name, file_name):
+    path = sys.argv[0]
+    path = os.path.join(os.path.dirname(path), dir_name)
 
-    # test = [encoded_list.append(i.encode()) for i in list_]
+    return path + '/' + file_name
