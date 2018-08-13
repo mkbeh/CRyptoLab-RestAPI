@@ -126,7 +126,7 @@ class UserController(object):
                 password_c = data['password'].encode()
 
                 if email_s == email_c and utils.passwd_checker(password_s, password_c):
-                    return {'status': 'success'}
+                    return {'id': self.json_encoder.encode(document['_id'])}
 
                 else:
                     return {'status': {'error': 'Incorrect data.'}}
