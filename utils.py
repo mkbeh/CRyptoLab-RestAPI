@@ -7,7 +7,7 @@ import bcrypt
 
 
 # Func which validate fields: email, password and password confirmation.
-def validate_values(email, password, re_password=None):
+def validate_values(email, password, re_password=None, username=None):
     email_pattern = re.compile(r'\w{4,35}@\w{2,10}\.\w{2,6}')
     username_pattern = re.compile(r'\w{6,20}')
 
