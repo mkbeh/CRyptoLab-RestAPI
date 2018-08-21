@@ -8,16 +8,29 @@ import bcrypt
 
 # Func which validate fields: email, password and password confirmation.
 def validate_values(email, password, re_password=None):
-    pattern = re.compile(r'\w{4,35}@\w{2,10}\.\w{2,6}')
+    email_pattern = re.compile(r'\w{4,35}@\w{2,10}\.\w{2,6}')
+    username_pattern = re.compile(r'\w{6,20}')
 
     try:
-        re.match(pattern, email).group()
+        re.match(email_pattern, email).group()
 
         if len(password) < 6:
             return False
 
         if re_password is not None:
             if password != re_password:
+                return False
+
+            try:
+                result = re.match(username_pattern, username).group()
+
+                if len(result) < 6:
+                    return False
+
+                else:
+                    return True
+
+            except AttributeError:
                 return False
 
         return True

@@ -44,7 +44,8 @@ class UserSchema(object):
         'email': (basestring, lambda x: x),
         'password': (basestring, lambda x: 5 < len(x) < 40),
         'confirm_password': (basestring, lambda x: 5 < len(x) < 40),
-        'id': (basestring, lambda x: x)
+        'id': (basestring, lambda x: x),
+        'username': (basestring, lambda x: 5 < len(x) < 20)
     }
 
     @classmethod
@@ -80,9 +81,10 @@ class UserController(object):
         email = unicodedata.normalize('NFKD', data['email']).encode('utf-8', 'ignore')
         password = unicodedata.normalize('NFKD', data['password']).encode('utf-8', 'ignore')
         confirm_password = unicodedata.normalize('NFKD', data['confirm_password']).encode('utf-8', 'ignore')
+        username = unicodedata.normalize('NFKD', data['username']).encode('utf-8', 'ignore')
 
         # Validate data.
-        result = utils.validate_values(email, password, confirm_password)
+        result = utils.validate_values(email, password, confirm_password, username)
 
         if result is True:
             # Check on current email is already registered.
@@ -93,7 +95,8 @@ class UserController(object):
                 passwd_hash = utils.passwd_hashing(password)
 
                 # Try to get email from db.
-                document = self.mongo.insert_one({'email': email, 'password': passwd_hash}, 'users')
+                document = self.mongo.insert_one({'email': email, 'password': passwd_hash, 'username': username},
+                                                 'users')
 
                 return {'id': self.json_encoder.encode(document.inserted_id)}
 
